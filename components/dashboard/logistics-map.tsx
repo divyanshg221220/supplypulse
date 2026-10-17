@@ -17,13 +17,16 @@ import {
   type SupplyRoute,
 } from '@/lib/supply-data'
 
+import { type SimulatedNode } from '@/lib/simulation-engine'
+
 export interface LogisticsMapProps {
-  nodes: SupplyNode[]
+  nodes: (SupplyNode | SimulatedNode)[]
   region: RegionFilter
   selectedNodeId: string | null
   onSelectNode: (id: string) => void
   showRoutes: boolean
   statusFilter: Record<NodeStatus, boolean>
+  isSimulated?: boolean
 }
 
 const MODE_DASH: Record<SupplyRoute['mode'], string | undefined> = {
@@ -125,8 +128,13 @@ export default function LogisticsMap({
   onSelectNode,
   showRoutes,
   statusFilter,
+  isSimulated = false,
 }: LogisticsMapProps) {
   const regionNodeIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
+  const nodeLookup = useMemo(
+    () => new Map<string, SupplyNode | SimulatedNode>(nodes.map((n) => [n.id, n])),
+    [nodes]
+  )
 
   const routes = useMemo(
     () =>
@@ -189,18 +197,29 @@ export default function LogisticsMap({
           })
         : null}
 
-      {allNodes.map((node) => {
-        const status = statusFromRisk(node.riskScore)
+      {allNodes.map((baseNode) => {
+        const activeNode = nodeLookup.get(baseNode.id) || baseNode
+        const effectiveRisk: number =
+          'simulatedRiskScore' in activeNode && isSimulated
+            ? (activeNode as SimulatedNode).simulatedRiskScore
+            : activeNode.riskScore
+        const status = statusFromRisk(effectiveRisk)
         if (!statusFilter[status]) return null
         const color = STATUS_META[status].hex
-        const inRegion = regionNodeIds.has(node.id)
-        const isSelected = node.id === selectedNodeId
-        const radius = 5 + Math.min(node.activeShipments / 30, 6)
+        const inRegion = regionNodeIds.has(baseNode.id)
+        const isSelected = baseNode.id === selectedNodeId
+        const activeShipments: number =
+          'simulatedShipments' in activeNode && isSimulated
+            ? (activeNode as SimulatedNode).simulatedShipments
+            : activeNode.activeShipments
+        const radius = 5 + Math.min(activeShipments / 30, 6)
+        const riskDelta = effectiveRisk - baseNode.riskScore
+
         return (
-          <Fragment key={`${node.id}-${inRegion}-${isSelected}`}>
+          <Fragment key={`${baseNode.id}-${inRegion}-${isSelected}-${effectiveRisk}`}>
             {status === 'critical' && inRegion ? (
               <CircleMarker
-                center={[node.lat, node.lng]}
+                center={[baseNode.lat, baseNode.lng]}
                 radius={radius + 2}
                 pathOptions={{
                   color,
@@ -212,7 +231,7 @@ export default function LogisticsMap({
               />
             ) : null}
             <CircleMarker
-              center={[node.lat, node.lng]}
+              center={[baseNode.lat, baseNode.lng]}
               radius={isSelected ? radius + 3 : radius}
               pathOptions={{
                 color: isSelected ? '#ffffff' : color,
@@ -221,20 +240,32 @@ export default function LogisticsMap({
                 fillOpacity: inRegion ? 0.85 : 0.2,
                 opacity: inRegion ? 1 : 0.35,
               }}
-              eventHandlers={{ click: () => onSelectNode(node.id) }}
+              eventHandlers={{ click: () => onSelectNode(baseNode.id) }}
             >
               <Tooltip className="sp-tooltip" direction="top" offset={[0, -radius]}>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs font-semibold">{node.name}</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold">{baseNode.name}</span>
+                    {isSimulated ? (
+                      <span className="rounded bg-amber-500/20 px-1 py-0.2 font-mono text-[9px] font-bold text-amber-400">
+                        SIMULATED
+                      </span>
+                    ) : null}
+                  </div>
                   <span className="text-[11px] text-muted-foreground">
-                    {NODE_TYPE_LABELS[node.type]} · {node.city}
+                    {NODE_TYPE_LABELS[baseNode.type]} · {baseNode.city}
                   </span>
                   <span className="mt-1 flex items-center gap-2 text-[11px]">
                     <span style={{ color }} className="font-mono font-semibold">
-                      Risk {node.riskScore}
+                      Risk {effectiveRisk}
+                      {isSimulated && riskDelta !== 0 ? (
+                        <span className="ml-1 text-[10px] text-muted-foreground">
+                          ({riskDelta > 0 ? '+' : ''}{riskDelta})
+                        </span>
+                      ) : null}
                     </span>
                     <span className="text-muted-foreground">
-                      {formatCompact(node.throughput)} {node.throughputUnit}
+                      {formatCompact(baseNode.throughput)} {baseNode.throughputUnit}
                     </span>
                   </span>
                 </div>

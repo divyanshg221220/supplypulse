@@ -20,16 +20,25 @@ const LogisticsMap = dynamic(() => import('./logistics-map'), {
   ),
 })
 
+import { type SimulatedNode } from '@/lib/simulation-engine'
+
 const STATUSES: NodeStatus[] = ['critical', 'watch', 'healthy']
 
 interface MapPanelProps {
-  nodes: SupplyNode[]
+  nodes: (SupplyNode | SimulatedNode)[]
   region: RegionFilter
   selectedNodeId: string | null
   onSelectNode: (id: string) => void
+  isSimulated?: boolean
 }
 
-export function MapPanel({ nodes, region, selectedNodeId, onSelectNode }: MapPanelProps) {
+export function MapPanel({
+  nodes,
+  region,
+  selectedNodeId,
+  onSelectNode,
+  isSimulated = false,
+}: MapPanelProps) {
   const [showRoutes, setShowRoutes] = useState(true)
   const [statusFilter, setStatusFilter] = useState<Record<NodeStatus, boolean>>({
     critical: true,
@@ -39,7 +48,10 @@ export function MapPanel({ nodes, region, selectedNodeId, onSelectNode }: MapPan
 
   const counts = STATUSES.reduce(
     (acc, status) => {
-      acc[status] = NODES.filter((n) => statusFromRisk(n.riskScore) === status).length
+      acc[status] = nodes.filter((n) => {
+        const risk = 'simulatedRiskScore' in n && isSimulated ? n.simulatedRiskScore : n.riskScore
+        return statusFromRisk(risk) === status
+      }).length
       return acc
     },
     {} as Record<NodeStatus, number>,
@@ -48,8 +60,8 @@ export function MapPanel({ nodes, region, selectedNodeId, onSelectNode }: MapPan
   return (
     <Panel
       id="network-map"
-      title="Logistics Network"
-      description={`${NODES.length} nodes · ${ROUTES.length} active lanes · click a node for details`}
+      title={isSimulated ? 'Logistics Network (Simulated)' : 'Logistics Network'}
+      description={`${nodes.length} nodes · ${ROUTES.length} active lanes · ${isSimulated ? 'Deterministic risk applied to markers' : 'click a node for details'}`}
       className="h-[460px] xl:h-[520px]"
       actions={
         <>
@@ -98,6 +110,7 @@ export function MapPanel({ nodes, region, selectedNodeId, onSelectNode }: MapPan
         onSelectNode={onSelectNode}
         showRoutes={showRoutes}
         statusFilter={statusFilter}
+        isSimulated={isSimulated}
       />
       <div className="pointer-events-none absolute bottom-3 left-3 z-[500] hidden rounded-lg border bg-background/85 px-3 py-2 text-[11px] text-muted-foreground backdrop-blur sm:block">
         <p className="mb-1 font-medium text-foreground">Lane mode</p>

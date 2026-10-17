@@ -16,6 +16,7 @@ export interface KpiCardProps {
   icon: LucideIcon
   sparkline: { index: number; value: number }[]
   caption: string
+  isSimulated?: boolean
 }
 
 export function KpiCard({
@@ -28,6 +29,7 @@ export function KpiCard({
   icon: Icon,
   sparkline,
   caption,
+  isSimulated,
 }: KpiCardProps) {
   const gradientId = useId().replace(/:/g, '')
   const isUp = delta >= 0
@@ -36,9 +38,21 @@ export function KpiCard({
   const DeltaIcon = isUp ? ArrowUpRight : ArrowDownRight
 
   return (
-    <article className="flex min-w-0 flex-col gap-3 rounded-xl border bg-card p-4">
+    <article
+      className={cn(
+        'relative flex min-w-0 flex-col gap-3 rounded-xl border p-4 transition-all',
+        isSimulated ? 'border-amber-500/40 bg-card shadow-sm ring-1 ring-amber-500/20' : 'border-border bg-card'
+      )}
+    >
       <div className="flex items-center justify-between gap-2">
-        <h3 className="truncate text-xs font-medium text-muted-foreground">{label}</h3>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <h3 className="truncate text-xs font-medium text-muted-foreground">{label}</h3>
+          {isSimulated ? (
+            <span className="shrink-0 rounded bg-amber-500/20 px-1.5 py-0.2 font-mono text-[9px] font-bold uppercase tracking-wider text-amber-400 border border-amber-500/30">
+              SIMULATED
+            </span>
+          ) : null}
+        </div>
         <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground">
           <Icon aria-hidden="true" className="size-3.5" />
         </span>

@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowDownRight, ArrowUpRight, Check, Navigation, UserRound, X } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Check, Navigation, Route, UserRound, X } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Area, AreaChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { STATUS_META, formatNumber } from '@/lib/format'
@@ -13,15 +13,18 @@ import {
   type SupplyAlert,
   type SupplyNode,
 } from '@/lib/supply-data'
+import { type SimulatedNode } from '@/lib/simulation-engine'
 import { cn } from '@/lib/utils'
 import { NodeTypeIcon } from './node-type-icon'
 import { StatusBadge } from './status-badge'
 
 interface NodeDrawerProps {
-  node: SupplyNode | null
+  node: (SupplyNode | SimulatedNode) | null
   alerts: SupplyAlert[]
   onClose: () => void
   onSelectNode: (id: string) => void
+  onOpenReroute?: (nodeId: string) => void
+  isSimulated?: boolean
 }
 
 const IMPACT_CLASS: Record<RiskFactor['impact'], string> = {
@@ -30,12 +33,19 @@ const IMPACT_CLASS: Record<RiskFactor['impact'], string> = {
   low: 'bg-secondary text-muted-foreground',
 }
 
-export function NodeDrawer({ node, alerts, onClose, onSelectNode }: NodeDrawerProps) {
+export function NodeDrawer({
+  node,
+  alerts,
+  onClose,
+  onSelectNode,
+  onOpenReroute,
+  isSimulated = false,
+}: NodeDrawerProps) {
   const open = node !== null
   const closeRef = useRef<HTMLButtonElement>(null)
   const returnFocusRef = useRef<HTMLElement | null>(null)
   const titleId = useId()
-  const [lastNode, setLastNode] = useState<SupplyNode | null>(node)
+  const [lastNode, setLastNode] = useState<(SupplyNode | SimulatedNode) | null>(node)
   const [acknowledged, setAcknowledged] = useState<Set<string>>(() => new Set())
 
   if (node && node !== lastNode) setLastNode(node)
@@ -83,6 +93,8 @@ export function NodeDrawer({ node, alerts, onClose, onSelectNode }: NodeDrawerPr
             closeRef={closeRef}
             onClose={onClose}
             onSelectNode={onSelectNode}
+            onOpenReroute={onOpenReroute}
+            isSimulated={isSimulated}
             acknowledged={acknowledged.has(displayNode.id)}
             onAcknowledge={() =>
               setAcknowledged((prev) => {
@@ -106,33 +118,50 @@ function DrawerContent({
   closeRef,
   onClose,
   onSelectNode,
+  onOpenReroute,
+  isSimulated = false,
   acknowledged,
   onAcknowledge,
 }: {
-  node: SupplyNode
+  node: SupplyNode | SimulatedNode
   alerts: SupplyAlert[]
   titleId: string
   closeRef: React.RefObject<HTMLButtonElement | null>
   onClose: () => void
   onSelectNode: (id: string) => void
+  onOpenReroute?: (id: string) => void
+  isSimulated?: boolean
   acknowledged: boolean
   onAcknowledge: () => void
 }) {
-  const status = statusFromRisk(node.riskScore)
+  const effectiveRisk =
+    'simulatedRiskScore' in node && isSimulated ? node.simulatedRiskScore : node.riskScore
+  const status = statusFromRisk(effectiveRisk)
   const meta = STATUS_META[status]
   const series = useMemo(() => generateNodeRiskSeries(node), [node])
   const { inbound, outbound } = useMemo(() => getConnections(node.id), [node.id])
   const gradientId = useId().replace(/:/g, '')
   const forecastEnd = series[series.length - 1].risk
-  const forecastDelta = forecastEnd - node.riskScore
+  const forecastDelta = forecastEnd - effectiveRisk
+
+  const capacityUsed =
+    'simulatedCapacityUtilization' in node && isSimulated
+      ? node.simulatedCapacityUtilization
+      : node.capacityUtilization
+  const bufferDays =
+    'simulatedBufferDays' in node && isSimulated ? node.simulatedBufferDays : node.bufferDays
+  const onTimeRate =
+    'simulatedOnTimeRate' in node && isSimulated ? node.simulatedOnTimeRate : node.onTimeRate
+  const shipments =
+    'simulatedShipments' in node && isSimulated ? node.simulatedShipments : node.activeShipments
 
   const metrics = [
     { label: 'Throughput', value: formatNumber(node.throughput), unit: node.throughputUnit },
-    { label: 'Capacity used', value: `${node.capacityUtilization}`, unit: '%' },
-    { label: 'Buffer cover', value: `${node.bufferDays}`, unit: 'days' },
-    { label: 'On-time rate', value: node.onTimeRate.toFixed(1), unit: '%' },
+    { label: 'Capacity used', value: `${capacityUsed}`, unit: '%' },
+    { label: 'Buffer cover', value: `${bufferDays}`, unit: 'days' },
+    { label: 'On-time rate', value: onTimeRate.toFixed(1), unit: '%' },
     { label: 'Lead time', value: `${node.leadTimeDays}`, unit: 'days' },
-    { label: 'Active shipments', value: `${node.activeShipments}`, unit: '' },
+    { label: 'Active shipments', value: `${shipments}`, unit: '' },
   ]
 
   return (
@@ -172,11 +201,24 @@ function DrawerContent({
         <section aria-label="Risk score" className="border-b p-5">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-xs text-muted-foreground">Composite risk score</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">Composite risk score</p>
+                {isSimulated ? (
+                  <span className="rounded bg-amber-500/20 px-1.5 py-0.2 font-mono text-[9px] font-bold text-amber-400 border border-amber-500/30">
+                    SIMULATED
+                  </span>
+                ) : null}
+              </div>
               <p className={cn('font-mono text-4xl font-semibold tabular-nums', meta.textClass)}>
-                {node.riskScore}
+                {effectiveRisk}
                 <span className="text-base font-medium text-muted-foreground">/100</span>
               </p>
+              {isSimulated && effectiveRisk !== node.riskScore ? (
+                <p className="text-[11px] font-mono text-muted-foreground">
+                  Baseline: {node.riskScore} ({effectiveRisk > node.riskScore ? '+' : ''}
+                  {effectiveRisk - node.riskScore} pts)
+                </p>
+              ) : null}
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">72h forecast</p>
@@ -333,6 +375,16 @@ function DrawerContent({
             Owner: <span className="text-foreground">{node.manager}</span>
           </span>
         </div>
+        {onOpenReroute ? (
+          <button
+            type="button"
+            onClick={() => onOpenReroute(node.id)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
+          >
+            <Route aria-hidden="true" className="size-3.5" />
+            Reroute
+          </button>
+        ) : null}
         <a
           href={`https://www.openstreetmap.org/?mlat=${node.lat}&mlon=${node.lng}#map=8/${node.lat}/${node.lng}`}
           target="_blank"

@@ -1,7 +1,8 @@
 'use client'
 
-import { Bell, Menu, Search } from 'lucide-react'
+import { Bell, CloudOff, Database, Menu, Route, Search, Sliders, Sparkles } from 'lucide-react'
 import { useId, useMemo, useState } from 'react'
+import { API_BASE_URL } from '@/lib/api'
 import { NODES, REGION_LABELS, statusFromRisk, type RegionFilter } from '@/lib/supply-data'
 import { cn } from '@/lib/utils'
 import { NodeTypeIcon } from './node-type-icon'
@@ -16,6 +17,9 @@ interface TopNavProps {
   onSelectNode: (id: string) => void
   unreadAlerts: number
   onOpenAlerts: () => void
+  onOpenRerouteModal: () => void
+  isSimulated?: boolean
+  onOpenSimulator?: () => void
 }
 
 export function TopNav({
@@ -25,6 +29,9 @@ export function TopNav({
   onSelectNode,
   unreadAlerts,
   onOpenAlerts,
+  onOpenRerouteModal,
+  isSimulated = false,
+  onOpenSimulator,
 }: TopNavProps) {
   return (
     <header className="sticky top-0 z-[1000] border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
@@ -47,6 +54,51 @@ export function TopNav({
         <NodeSearch onSelectNode={onSelectNode} />
 
         <div className="ml-auto flex items-center gap-2">
+          {/* Automated Rerouting Trigger Button */}
+          <button
+            type="button"
+            onClick={onOpenRerouteModal}
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-all shadow-sm"
+          >
+            <Route className="size-3.5" />
+            <span>Automated Rerouting</span>
+          </button>
+
+          {/* Backend Fallback / Demo Data Badge */}
+          <div
+            title={
+              API_BASE_URL
+                ? `Target Backend: ${API_BASE_URL} (Fallback Active)`
+                : 'Standalone Demo Mode: NEXT_PUBLIC_API_BASE_URL not configured. Using deterministic client fallback.'
+            }
+            className="hidden items-center gap-1.5 rounded-full border border-border bg-secondary/60 px-2.5 py-1 text-[11px] font-mono text-muted-foreground lg:inline-flex cursor-help"
+          >
+            <CloudOff className="size-3 text-muted-foreground" />
+            <span>DEMO DATA</span>
+          </div>
+
+          {/* Gemini AI Status Badge */}
+          <div
+            title="Google Gemini AI Key Linked (Model: gemini-3.8-flash active for real-time NLP extraction)"
+            className="hidden items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-[11px] font-mono text-primary lg:inline-flex cursor-help shadow-sm"
+          >
+            <Sparkles className="size-3 text-primary animate-pulse" />
+            <span>GEMINI ONLINE</span>
+          </div>
+
+          {/* Simulation Active Pill */}
+          {isSimulated ? (
+            <button
+              type="button"
+              onClick={onOpenSimulator}
+              className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold text-amber-400 hover:bg-amber-500/25 transition-colors animate-pulse"
+            >
+              <Sliders className="size-3" />
+              <span>SIMULATION</span>
+            </button>
+          ) : null}
+
+          {/* Region Filter Group */}
           <div
             role="group"
             aria-label="Region filter"
@@ -69,6 +121,7 @@ export function TopNav({
               </button>
             ))}
           </div>
+
           <label className="sm:hidden">
             <span className="sr-only">Region</span>
             <select

@@ -7,22 +7,41 @@ import { cn } from '@/lib/utils'
 import { NodeTypeIcon } from './node-type-icon'
 import { Panel } from './panel'
 
+import { type SimulatedNode } from '@/lib/simulation-engine'
+
 export function AtRiskNodes({
   nodes,
   selectedNodeId,
   onSelectNode,
+  isSimulated = false,
 }: {
-  nodes: SupplyNode[]
+  nodes: (SupplyNode | SimulatedNode)[]
   selectedNodeId: string | null
   onSelectNode: (id: string) => void
+  isSimulated?: boolean
 }) {
-  const ranked = [...nodes].sort((a, b) => b.riskScore - a.riskScore).slice(0, 7)
+  const ranked = [...nodes]
+    .map((node) => {
+      const effectiveRisk =
+        'simulatedRiskScore' in node && isSimulated ? node.simulatedRiskScore : node.riskScore
+      return { node, effectiveRisk }
+    })
+    .sort((a, b) => b.effectiveRisk - a.effectiveRisk)
+    .slice(0, 7)
 
   return (
-    <Panel id="at-risk-nodes" title="Highest-Risk Nodes" description="Ranked by current composite risk score">
+    <Panel
+      id="at-risk-nodes"
+      title={isSimulated ? 'Highest-Risk Nodes (Simulated)' : 'Highest-Risk Nodes'}
+      description={
+        isSimulated
+          ? 'Ranked by deterministically recalculated scenario risk scores'
+          : 'Ranked by current composite risk score'
+      }
+    >
       <ul className="divide-y">
-        {ranked.map((node, index) => {
-          const status = statusFromRisk(node.riskScore)
+        {ranked.map(({ node, effectiveRisk }, index) => {
+          const status = statusFromRisk(effectiveRisk)
           const meta = STATUS_META[status]
           return (
             <li key={node.id}>
@@ -45,14 +64,14 @@ export function AtRiskNodes({
                     <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
                       <span
                         className={cn('block h-full rounded-full', meta.dotClass)}
-                        style={{ width: `${node.riskScore}%` }}
+                        style={{ width: `${effectiveRisk}%` }}
                       />
                     </span>
                     <span className="truncate text-[11px] text-muted-foreground">{node.city}</span>
                   </span>
                 </span>
                 <span className={cn('w-8 text-right font-mono text-sm font-semibold tabular-nums', meta.textClass)}>
-                  {node.riskScore}
+                  {effectiveRisk}
                 </span>
                 <ChevronRight aria-hidden="true" className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
               </button>

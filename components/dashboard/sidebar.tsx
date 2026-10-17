@@ -2,15 +2,19 @@
 
 import {
   Activity,
+  AlertOctagon,
   Bell,
+  BrainCircuit,
   ChartLine,
   FileText,
   LayoutDashboard,
   LifeBuoy,
   Map as MapIcon,
   Package,
+  Route,
   Settings,
   Ship,
+  Sliders,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -26,14 +30,15 @@ interface NavItem {
 const PRIMARY_NAV: NavItem[] = [
   { label: 'Overview', icon: LayoutDashboard, href: '#overview' },
   { label: 'Network Map', icon: MapIcon, href: '#network-map' },
+  { label: 'What-If Simulator', icon: Sliders, href: '#scenario-simulator' },
+  { label: 'Anomaly Center', icon: AlertOctagon, href: '#anomaly-center' },
+  { label: 'AI Intelligence', icon: BrainCircuit, href: '#event-intelligence' },
   { label: 'Risk Forecast', icon: ChartLine, href: '#risk-timeline' },
-  { label: 'Alerts', icon: Bell, href: '#alerts', badgeKey: 'alerts' },
-  { label: 'Shipments', icon: Ship, href: '#overview' },
-  { label: 'Suppliers', icon: Package, href: '#at-risk-nodes' },
+  { label: 'Live Alerts', icon: Bell, href: '#alerts', badgeKey: 'alerts' },
 ]
 
 const SECONDARY_NAV: NavItem[] = [
-  { label: 'Reports', icon: FileText, href: '#overview' },
+  { label: 'At-Risk Nodes', icon: Package, href: '#at-risk-nodes' },
   { label: 'Settings', icon: Settings, href: '#overview' },
   { label: 'Support', icon: LifeBuoy, href: '#overview' },
 ]
@@ -42,6 +47,7 @@ interface SidebarProps {
   open: boolean
   onClose: () => void
   unreadAlerts: number
+  onOpenRerouteModal?: () => void
 }
 
 export function Sidebar({ open, onClose, unreadAlerts }: SidebarProps) {
