@@ -6,6 +6,7 @@ import {
   Bell,
   BrainCircuit,
   ChartLine,
+  Compass,
   FileText,
   LayoutDashboard,
   LifeBuoy,
@@ -30,6 +31,7 @@ interface NavItem {
 const PRIMARY_NAV: NavItem[] = [
   { label: 'Overview', icon: LayoutDashboard, href: '#overview' },
   { label: 'Network Map', icon: MapIcon, href: '#network-map' },
+  { label: 'Logistics Modes', icon: Compass, href: '#multimodal-center' },
   { label: 'What-If Simulator', icon: Sliders, href: '#scenario-simulator' },
   { label: 'Anomaly Center', icon: AlertOctagon, href: '#anomaly-center' },
   { label: 'AI Intelligence', icon: BrainCircuit, href: '#event-intelligence' },

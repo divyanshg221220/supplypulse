@@ -26,6 +26,7 @@ import {
   filterNodesByRegion,
   type RegionFilter,
   type SupplyAlert,
+  type TransportMode,
 } from '@/lib/supply-data'
 import { formatHourOffset } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -36,6 +37,7 @@ import { AtRiskNodes } from './at-risk-nodes'
 import { EventIntelligence } from './event-intelligence'
 import { KpiGrid } from './kpi-grid'
 import { MapPanel } from './map-panel'
+import { MultimodalCenter } from './multimodal-center'
 import { NodeDrawer } from './node-drawer'
 import { RerouteModal } from './reroute-modal'
 import { RiskTimeline } from './risk-timeline'
@@ -61,7 +63,16 @@ export function DashboardShell() {
   const [lastRerouteNotice, setLastRerouteNotice] = useState<RerouteConfirmation | null>(null)
 
   // Active view section tab filter for fast jumping
-  const [activeTab, setActiveTab] = useState<'all' | 'overview' | 'simulator' | 'anomalies' | 'ai'>('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'overview' | 'multimodal' | 'simulator' | 'anomalies' | 'ai'>('all')
+
+  // Transport Mode Filter synced with map
+  const [mapMode, setMapMode] = useState<TransportMode | 'all'>('all')
+
+  const openRerouteForLane = (fromId: string, toId: string) => {
+    setRerouteFromNodeId(fromId)
+    setRerouteToNodeId(toId)
+    setRerouteModalOpen(true)
+  }
 
   // Deterministic Recalculation Engine
   const simulationResult = useMemo(
@@ -258,6 +269,21 @@ export function DashboardShell() {
               <button
                 type="button"
                 onClick={() => {
+                  setActiveTab('multimodal')
+                  document.getElementById('multimodal-center')?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                className={cn(
+                  'rounded-md px-2.5 py-1 font-medium transition-colors',
+                  activeTab === 'multimodal'
+                    ? 'bg-secondary text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Logistics Modes
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   setActiveTab('simulator')
                   document.getElementById('scenario-simulator')?.scrollIntoView({ behavior: 'smooth' })
                 }}
@@ -315,6 +341,7 @@ export function DashboardShell() {
                 selectedNodeId={selectedNodeId}
                 onSelectNode={setSelectedNodeId}
                 isSimulated={isSimulated}
+                forcedMode={mapMode}
               />
             </div>
             <div className="min-w-0 xl:col-span-4">
@@ -340,6 +367,12 @@ export function DashboardShell() {
               />
             </div>
           </div>
+
+          {/* Dedicated Multimodal Logistics Operations (Waterways, Airways, Railways, Roadways) */}
+          <MultimodalCenter
+            onOpenRerouteForLane={openRerouteForLane}
+            onFilterMapMode={setMapMode}
+          />
 
           {/* What-If Scenario Simulator Panel */}
           <ScenarioSimulator

@@ -20,6 +20,7 @@ Always respond with valid, raw JSON conforming strictly to this format:
   "headline": "concise incident title under 80 characters",
   "incidentCategory": "weather" | "congestion" | "supplier" | "transit" | "quality" | "geopolitical",
   "severity": "critical" | "warning" | "info",
+  "impactedModes": ["waterways" | "airways" | "railways" | "roadways"],
   "affectedLocations": ["City, Country"],
   "matchedNodeIds": ["node-id-1"],
   "primaryNodeId": "most-affected-node-id",
@@ -34,9 +35,10 @@ Always respond with valid, raw JSON conforming strictly to this format:
   },
   "keyEntities": [
     { "label": "Entity / Node", "value": "Name" },
+    { "label": "Transport Mode", "value": "Waterways / Airways / Railways / Roadways" },
     { "label": "Impact Zone", "value": "Location" },
     { "label": "Delay Estimate", "value": "+X days" },
-    { "label": "Vessel Backlog", "value": "Count" }
+    { "label": "Vessel / Vehicle Backlog", "value": "Count" }
   ],
   "summary": "2-3 sentence executive operational impact summary",
   "recommendedRemediation": "Immediate recommended mitigation action for the dispatcher",
@@ -128,10 +130,26 @@ function generateLocalFallback(rawText: string): ExtractedEvent {
   const primaryNode = matched[0] || NODES[1]
   const isSevere = textLower.includes('critical') || textLower.includes('suspend') || textLower.includes('halt')
 
+  const impactedModes: ('waterways' | 'airways' | 'railways' | 'roadways')[] = []
+  if (textLower.includes('vessel') || textLower.includes('port') || textLower.includes('berth') || textLower.includes('maritime') || textLower.includes('typhoon') || textLower.includes('ocean')) {
+    impactedModes.push('waterways')
+  }
+  if (textLower.includes('air') || textLower.includes('flight') || textLower.includes('wafer') || textLower.includes('semiconductor')) {
+    impactedModes.push('airways')
+  }
+  if (textLower.includes('rail') || textLower.includes('train') || textLower.includes('chassis') || textLower.includes('intermodal')) {
+    impactedModes.push('railways')
+  }
+  if (textLower.includes('truck') || textLower.includes('highway') || textLower.includes('road') || textLower.includes('drayage')) {
+    impactedModes.push('roadways')
+  }
+  if (impactedModes.length === 0) impactedModes.push('waterways')
+
   return {
     headline: rawText.split('\n')[0].slice(0, 85) || `${category.toUpperCase()} Disruption Advisory`,
     incidentCategory: category,
     severity: isSevere ? 'critical' : 'warning',
+    impactedModes,
     affectedLocations: [`${primaryNode.city}, ${primaryNode.country}`],
     matchedNodeIds: [primaryNode.id],
     primaryNodeId: primaryNode.id,
@@ -146,11 +164,12 @@ function generateLocalFallback(rawText: string): ExtractedEvent {
     },
     keyEntities: [
       { label: 'Primary Node', value: primaryNode.name },
+      { label: 'Transport Mode', value: impactedModes.map((m) => m.toUpperCase()).join(' & ') },
       { label: 'Location', value: `${primaryNode.city}, ${primaryNode.country}` },
       { label: 'Est. Delay', value: isSevere ? '+5.5 days' : '+2.5 days' },
       { label: 'Source', value: 'Local Deterministic Fallback' },
     ],
-    summary: `Identified ${category} anomaly impacting ${primaryNode.name} based on operational advisory keywords.`,
+    summary: `Identified ${category} anomaly impacting ${primaryNode.name} across ${impactedModes.join(', ')} based on operational advisory keywords.`,
     recommendedRemediation: `Initiate automated rerouting protocols and buffer drawing around ${primaryNode.name}.`,
     riskAttributions: [
       { factor: 'Primary Disruption Impact', deltaPts: +34, direction: 'up', comment: 'Direct corridor bottleneck' },

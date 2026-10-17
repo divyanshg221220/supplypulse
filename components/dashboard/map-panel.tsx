@@ -1,10 +1,19 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { Route } from 'lucide-react'
+import { Plane, Route, Ship, Train, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { STATUS_META } from '@/lib/format'
-import { NODES, ROUTES, statusFromRisk, type NodeStatus, type RegionFilter, type SupplyNode } from '@/lib/supply-data'
+import {
+  LOGISTICS_MODES_META,
+  NODES,
+  ROUTES,
+  statusFromRisk,
+  type NodeStatus,
+  type RegionFilter,
+  type SupplyNode,
+  type TransportMode,
+} from '@/lib/supply-data'
 import { cn } from '@/lib/utils'
 import { Panel } from './panel'
 
@@ -23,6 +32,14 @@ const LogisticsMap = dynamic(() => import('./logistics-map'), {
 import { type SimulatedNode } from '@/lib/simulation-engine'
 
 const STATUSES: NodeStatus[] = ['critical', 'watch', 'healthy']
+const MODES: TransportMode[] = ['sea', 'air', 'rail', 'road']
+
+const MODE_ICON_MAP = {
+  sea: Ship,
+  air: Plane,
+  rail: Train,
+  road: Truck,
+}
 
 interface MapPanelProps {
   nodes: (SupplyNode | SimulatedNode)[]
@@ -30,6 +47,7 @@ interface MapPanelProps {
   selectedNodeId: string | null
   onSelectNode: (id: string) => void
   isSimulated?: boolean
+  forcedMode?: TransportMode | 'all'
 }
 
 export function MapPanel({
@@ -38,6 +56,7 @@ export function MapPanel({
   selectedNodeId,
   onSelectNode,
   isSimulated = false,
+  forcedMode,
 }: MapPanelProps) {
   const [showRoutes, setShowRoutes] = useState(true)
   const [statusFilter, setStatusFilter] = useState<Record<NodeStatus, boolean>>({
@@ -45,6 +64,22 @@ export function MapPanel({
     watch: true,
     healthy: true,
   })
+  const [modeFilter, setModeFilter] = useState<Record<TransportMode, boolean>>({
+    sea: true,
+    air: true,
+    rail: true,
+    road: true,
+  })
+
+  // Effective mode filter taking into account forcedMode if set
+  const effectiveModeFilter = forcedMode && forcedMode !== 'all'
+    ? {
+        sea: forcedMode === 'sea',
+        air: forcedMode === 'air',
+        rail: forcedMode === 'rail',
+        road: forcedMode === 'road',
+      }
+    : modeFilter
 
   const counts = STATUSES.reduce(
     (acc, status) => {
@@ -57,12 +92,19 @@ export function MapPanel({
     {} as Record<NodeStatus, number>,
   )
 
+  const toggleMode = (m: TransportMode) => {
+    setModeFilter((prev) => ({
+      ...prev,
+      [m]: !prev[m],
+    }))
+  }
+
   return (
     <Panel
       id="network-map"
       title={isSimulated ? 'Logistics Network (Simulated)' : 'Logistics Network'}
-      description={`${nodes.length} nodes · ${ROUTES.length} active lanes · ${isSimulated ? 'Deterministic risk applied to markers' : 'click a node for details'}`}
-      className="h-[460px] xl:h-[520px]"
+      description={`${nodes.length} nodes · ${ROUTES.length} active lanes across Waterways, Airways, Railways & Roadways`}
+      className="h-[480px] xl:h-[540px]"
       actions={
         <>
           <div role="group" aria-label="Filter nodes by status" className="flex items-center gap-1">
@@ -111,27 +153,64 @@ export function MapPanel({
         showRoutes={showRoutes}
         statusFilter={statusFilter}
         isSimulated={isSimulated}
+        modeFilter={effectiveModeFilter}
       />
-      <div className="pointer-events-none absolute bottom-3 left-3 z-[500] hidden rounded-lg border bg-background/85 px-3 py-2 text-[11px] text-muted-foreground backdrop-blur sm:block">
-        <p className="mb-1 font-medium text-foreground">Lane mode</p>
-        <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
-          <LegendLine label="Sea" dash="5 4" />
-          <LegendLine label="Air" dash="1.5 4" />
-          <LegendLine label="Rail" dash="8 3" />
-          <LegendLine label="Road" />
-        </ul>
+
+      {/* Interactive Transport Mode Filter HUD */}
+      <div className="absolute bottom-3 left-3 z-[500] rounded-xl border border-border/80 bg-background/90 p-2.5 shadow-xl backdrop-blur-md">
+        <div className="flex items-center justify-between gap-3 mb-1.5 border-b border-border/60 pb-1">
+          <p className="text-[11px] font-bold text-foreground">Logistics Modes</p>
+          <button
+            type="button"
+            onClick={() =>
+              setModeFilter({
+                sea: true,
+                air: true,
+                rail: true,
+                road: true,
+              })
+            }
+            className="text-[10px] text-primary hover:underline font-medium"
+          >
+            Show All
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          {MODES.map((mode) => {
+            const meta = LOGISTICS_MODES_META[mode]
+            const Icon = MODE_ICON_MAP[mode]
+            const active = effectiveModeFilter[mode]
+            const count = ROUTES.filter((r) => r.mode === mode).length
+
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => toggleMode(mode)}
+                className={cn(
+                  'flex items-center justify-between gap-3 rounded-lg px-2 py-1 text-left text-[11px] font-medium transition-all',
+                  active
+                    ? 'bg-secondary/80 text-foreground'
+                    : 'text-muted-foreground opacity-40 hover:opacity-80'
+                )}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span
+                    style={{ backgroundColor: active ? meta.colorHex : 'transparent' }}
+                    className="flex size-4 items-center justify-center rounded text-black"
+                  >
+                    <Icon className="size-2.5" />
+                  </span>
+                  <span>{meta.label}</span>
+                </div>
+                <span className="font-mono text-[10px] text-muted-foreground">{count} lanes</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
     </Panel>
   )
 }
 
-function LegendLine({ label, dash }: { label: string; dash?: string }) {
-  return (
-    <li className="flex items-center gap-1.5">
-      <svg width="22" height="6" aria-hidden="true">
-        <line x1="0" y1="3" x2="22" y2="3" stroke="currentColor" strokeWidth="2" strokeDasharray={dash} />
-      </svg>
-      {label}
-    </li>
-  )
-}

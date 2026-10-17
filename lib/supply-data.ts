@@ -87,6 +87,169 @@ export const NODE_TYPE_LABELS: Record<NodeType, string> = {
   distribution: 'Distribution Center',
 }
 
+export const MODE_LABELS: Record<TransportMode, string> = {
+  sea: 'Waterways',
+  air: 'Airways',
+  rail: 'Railways',
+  road: 'Roadways',
+}
+
+export interface ModeMetadata {
+  id: TransportMode
+  label: string
+  sublabel: string
+  tagline: string
+  colorHex: string
+  bgClass: string
+  borderClass: string
+  textClass: string
+  avgSpeedKmh: number
+  costPerTonKm: number // USD
+  co2PerTonKm: number // grams
+  reliabilityPct: number
+  typicalCapacity: string
+  activeUnitsLabel: string
+  activeUnitsCount: number
+  activeVolumeLabel: string
+  activeVolumeValue: string
+  avgTransitDays: number
+  fuelMetric: string
+  chokepoints: string[]
+  primaryAdvantages: string[]
+  primaryVulnerabilities: string[]
+}
+
+export const LOGISTICS_MODES_META: Record<TransportMode, ModeMetadata> = {
+  sea: {
+    id: 'sea',
+    label: 'Waterways',
+    sublabel: 'Maritime & Ocean Shipping',
+    tagline: 'Deepwater container fleets, inland barges, and maritime straits',
+    colorHex: '#06b6d4',
+    bgClass: 'bg-cyan-500/10',
+    borderClass: 'border-cyan-500/30',
+    textClass: 'text-cyan-400',
+    avgSpeedKmh: 35,
+    costPerTonKm: 0.04,
+    co2PerTonKm: 15,
+    reliabilityPct: 83.5,
+    typicalCapacity: '10,000 - 24,000 TEU per vessel',
+    activeUnitsLabel: 'Active Vessels',
+    activeUnitsCount: 142,
+    activeVolumeLabel: 'Ocean Volume',
+    activeVolumeValue: '84,200 TEU',
+    avgTransitDays: 18.5,
+    fuelMetric: 'VLSFO Bunker: $620/MT (+14%)',
+    chokepoints: ['Malacca Strait', 'Bab-el-Mandeb / Suez', 'Panama Canal'],
+    primaryAdvantages: [
+      'Massive scale capacity for bulk & container cargo',
+      'Lowest freight cost per ton-kilometer ($0.04)',
+      'Lowest carbon intensity per payload unit (15g CO2/t-km)',
+    ],
+    primaryVulnerabilities: [
+      'Berth and deepwater crane congestion (avg dwell 3.8d)',
+      'Canal draft limits and geopolitical maritime chokepoints',
+      'Long lead times vulnerable to typhoon weather delays',
+    ],
+  },
+  air: {
+    id: 'air',
+    label: 'Airways',
+    sublabel: 'Air Cargo & Dedicated Freighters',
+    tagline: 'High-speed airbridge for semiconductors, pharma & critical parts',
+    colorHex: '#38bdf8',
+    bgClass: 'bg-sky-500/10',
+    borderClass: 'border-sky-500/30',
+    textClass: 'text-sky-400',
+    avgSpeedKmh: 850,
+    costPerTonKm: 1.45,
+    co2PerTonKm: 480,
+    reliabilityPct: 97.8,
+    typicalCapacity: '65 - 135 metric tons per B777F / B747-8F',
+    activeUnitsLabel: 'Freighter Flights',
+    activeUnitsCount: 54,
+    activeVolumeLabel: 'Airfreight Payload',
+    activeVolumeValue: '3,850 Metric Tons',
+    avgTransitDays: 2.1,
+    fuelMetric: 'Jet A-1 Fuel Index: $2.84/kg',
+    chokepoints: ['Incheon ICN Hub', 'Anchorage ANC Refuel', 'Frankfurt FRA CargoCity'],
+    primaryAdvantages: [
+      'Fastest global transit velocity (1-3 days worldwide)',
+      'Near-perfect on-time reliability (97.8%)',
+      'Temperature-controlled cold chain & high-security handling',
+    ],
+    primaryVulnerabilities: [
+      'High freight rate per kilogram ($1.45/ton-km)',
+      'Heavy carbon footprint (32x higher than waterways)',
+      'Strict hazardous material & weight density constraints',
+    ],
+  },
+  rail: {
+    id: 'rail',
+    label: 'Railways',
+    sublabel: 'Intermodal Freight Rail & Rail Ramps',
+    tagline: 'Double-stack container corridors & continental Eurasian links',
+    colorHex: '#f59e0b',
+    bgClass: 'bg-amber-500/10',
+    borderClass: 'border-amber-500/30',
+    textClass: 'text-amber-400',
+    avgSpeedKmh: 65,
+    costPerTonKm: 0.12,
+    co2PerTonKm: 28,
+    reliabilityPct: 91.2,
+    typicalCapacity: '200 - 400 double-stack containers per train',
+    activeUnitsLabel: 'Intermodal Trains',
+    activeUnitsCount: 68,
+    activeVolumeLabel: 'Rail Cars in Transit',
+    activeVolumeValue: '12,400 Containers',
+    avgTransitDays: 3.4,
+    fuelMetric: 'Locomotive Efficiency: 480 ton-miles/gal',
+    chokepoints: ['Chicago Clearing Yard', 'Rotterdam Maasvlakte Rail Spine', 'Duisburg Intermodal Terminal'],
+    primaryAdvantages: [
+      '4x more fuel-efficient than long-haul highway trucking',
+      'Overland alternative to maritime canal diversions',
+      'Consistent scheduled departure windows & inland reach',
+    ],
+    primaryVulnerabilities: [
+      'Rail yard dwell and container chassis availability deficits',
+      'Single-track bottlenecks and terminal crane maintenance',
+      'Inflexible rail siding routing compared to road freight',
+    ],
+  },
+  road: {
+    id: 'road',
+    label: 'Roadways',
+    sublabel: 'Long-Haul Trucking & Port Drayage',
+    tagline: 'Cross-border tractor-trailers, dedicated fleets & final-mile drayage',
+    colorHex: '#10b981',
+    bgClass: 'bg-emerald-500/10',
+    borderClass: 'border-emerald-500/30',
+    textClass: 'text-emerald-400',
+    avgSpeedKmh: 80,
+    costPerTonKm: 0.32,
+    co2PerTonKm: 95,
+    reliabilityPct: 93.6,
+    typicalCapacity: '20 - 45 metric tons per 53-foot dry van / reefer',
+    activeUnitsLabel: 'Truck Fleets & Convoys',
+    activeUnitsCount: 310,
+    activeVolumeLabel: 'Highway Freight',
+    activeVolumeValue: '7,200 Tons',
+    avgTransitDays: 2.2,
+    fuelMetric: 'Diesel Spot Index: $3.92/gal',
+    chokepoints: ['Laredo Border Crossing', 'I-10 / I-80 Freight Arterials', 'Brenner Pass Alpine Corridor'],
+    primaryAdvantages: [
+      'Full door-to-door flexibility directly into customer docks',
+      'Immediate dispatch readiness with zero railhead transfer dwell',
+      'Unmatched short-haul (<800km) transit velocity',
+    ],
+    primaryVulnerabilities: [
+      'Driver hours-of-service regulations & labor shortages',
+      'Highway gridlock, urban toll congestion, and roadwork',
+      'Highest direct sensitivity to retail diesel price surges',
+    ],
+  },
+}
+
 export function statusFromRisk(risk: number): NodeStatus {
   if (risk >= 70) return 'critical'
   if (risk >= 45) return 'watch'

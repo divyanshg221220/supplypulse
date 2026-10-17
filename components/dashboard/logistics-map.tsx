@@ -15,6 +15,7 @@ import {
   type RegionFilter,
   type SupplyNode,
   type SupplyRoute,
+  type TransportMode,
 } from '@/lib/supply-data'
 
 import { type SimulatedNode } from '@/lib/simulation-engine'
@@ -27,6 +28,7 @@ export interface LogisticsMapProps {
   showRoutes: boolean
   statusFilter: Record<NodeStatus, boolean>
   isSimulated?: boolean
+  modeFilter?: Record<TransportMode, boolean>
 }
 
 const MODE_DASH: Record<SupplyRoute['mode'], string | undefined> = {
@@ -129,6 +131,7 @@ export default function LogisticsMap({
   showRoutes,
   statusFilter,
   isSimulated = false,
+  modeFilter,
 }: LogisticsMapProps) {
   const regionNodeIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
   const nodeLookup = useMemo(
@@ -179,6 +182,7 @@ export default function LogisticsMap({
       {showRoutes
         ? routes.map(({ route, status, inRegion, segments }) => {
             if (!statusFilter[status]) return null
+            if (modeFilter && !modeFilter[route.mode]) return null
             const color = STATUS_META[status].hex
             return segments.map((positions, index) => (
               <Polyline

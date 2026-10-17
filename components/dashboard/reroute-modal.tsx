@@ -326,18 +326,32 @@ export function RerouteModal({
                     >
                       {/* Top badge */}
                       <div className="flex items-start justify-between gap-2">
-                        <span
-                          className={cn(
-                            'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
-                            alt.badge === 'Recommended'
-                              ? 'bg-primary/20 text-primary border border-primary/30'
-                              : alt.badge === 'Fastest Express'
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                              : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                          )}
-                        >
-                          {alt.badge}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={cn(
+                              'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
+                              alt.badge === 'Recommended'
+                                ? 'bg-primary/20 text-primary border border-primary/30'
+                                : alt.badge === 'Fastest Express'
+                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            )}
+                          >
+                            {alt.badge}
+                          </span>
+                          <span className="rounded bg-secondary/80 px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-muted-foreground flex items-center gap-1">
+                            <Icon className="size-2.5" />
+                            {alt.mode === 'sea'
+                              ? 'Waterway'
+                              : alt.mode === 'air'
+                              ? 'Airway'
+                              : alt.mode === 'rail'
+                              ? 'Railway'
+                              : alt.mode === 'road'
+                              ? 'Roadway'
+                              : 'Intermodal'}
+                          </span>
+                        </div>
 
                         <div
                           className={cn(

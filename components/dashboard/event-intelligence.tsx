@@ -197,6 +197,14 @@ export function EventIntelligence({
                   <span className="rounded bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
                     {extractedEvent.incidentCategory}
                   </span>
+                  {extractedEvent.impactedModes?.map((mode) => (
+                    <span
+                      key={mode}
+                      className="rounded-full bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                    >
+                      Mode: {mode}
+                    </span>
+                  ))}
                   {extractedEvent.isLiveGemini ? (
                     <span className="rounded-full bg-primary/20 text-primary border border-primary/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm">
                       <Sparkles className="size-3 text-primary animate-pulse" /> Gemini 3.8 Flash Online

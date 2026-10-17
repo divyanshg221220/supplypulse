@@ -117,6 +117,7 @@ export interface ExtractedEvent {
   }[]
   isLiveGemini?: boolean
   modelVersion?: string
+  impactedModes?: ('waterways' | 'airways' | 'railways' | 'roadways')[]
 }
 
 // -------------------------------------------------------------
@@ -563,6 +564,12 @@ export async function extractEventFromText(
         `${category.toUpperCase()} Disruption Advisory: ${primaryNode.name}`,
       incidentCategory: category,
       severity,
+      impactedModes:
+        category === 'weather' || category === 'congestion'
+          ? ['waterways']
+          : category === 'supplier'
+          ? ['airways', 'railways']
+          : ['waterways', 'roadways'],
       affectedLocations: Array.from(new Set(matchedNodes.map((n) => `${n.city}, ${n.country}`))),
       matchedNodeIds: matchedNodes.map((n) => n.id),
       primaryNodeId: primaryNode.id,
