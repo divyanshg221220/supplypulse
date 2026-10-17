@@ -11,14 +11,16 @@ import {
   statusFromRisk,
   type RiskFactor,
   type SupplyAlert,
-  type SupplyNode,
 } from '@/lib/supply-data'
 import { cn } from '@/lib/utils'
+import type { SimulatedNode } from '@/lib/simulation'
+import { DataBadge } from './data-badge'
 import { NodeTypeIcon } from './node-type-icon'
 import { StatusBadge } from './status-badge'
 
 interface NodeDrawerProps {
-  node: SupplyNode | null
+  node: SimulatedNode | null
+  nodesById: Record<string, SimulatedNode>
   alerts: SupplyAlert[]
   onClose: () => void
   onSelectNode: (id: string) => void
@@ -30,12 +32,12 @@ const IMPACT_CLASS: Record<RiskFactor['impact'], string> = {
   low: 'bg-secondary text-muted-foreground',
 }
 
-export function NodeDrawer({ node, alerts, onClose, onSelectNode }: NodeDrawerProps) {
+export function NodeDrawer({ node, nodesById, alerts, onClose, onSelectNode }: NodeDrawerProps) {
   const open = node !== null
   const closeRef = useRef<HTMLButtonElement>(null)
   const returnFocusRef = useRef<HTMLElement | null>(null)
   const titleId = useId()
-  const [lastNode, setLastNode] = useState<SupplyNode | null>(node)
+  const [lastNode, setLastNode] = useState<SimulatedNode | null>(node)
   const [acknowledged, setAcknowledged] = useState<Set<string>>(() => new Set())
 
   if (node && node !== lastNode) setLastNode(node)
@@ -78,6 +80,7 @@ export function NodeDrawer({ node, alerts, onClose, onSelectNode }: NodeDrawerPr
         {displayNode ? (
           <DrawerContent
             node={displayNode}
+            nodesById={nodesById}
             alerts={alerts.filter((a) => a.nodeId === displayNode.id)}
             titleId={titleId}
             closeRef={closeRef}
@@ -101,6 +104,7 @@ export function NodeDrawer({ node, alerts, onClose, onSelectNode }: NodeDrawerPr
 
 function DrawerContent({
   node,
+  nodesById,
   alerts,
   titleId,
   closeRef,
@@ -109,7 +113,8 @@ function DrawerContent({
   acknowledged,
   onAcknowledge,
 }: {
-  node: SupplyNode
+  node: SimulatedNode
+  nodesById: Record<string, SimulatedNode>
   alerts: SupplyAlert[]
   titleId: string
   closeRef: React.RefObject<HTMLButtonElement | null>
@@ -148,8 +153,10 @@ function DrawerContent({
           <h2 id={titleId} className="mt-0.5 text-base font-semibold leading-snug text-balance">
             {node.name}
           </h2>
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <StatusBadge status={status} />
+            <DataBadge kind="demo" />
+            {node.simulated ? <DataBadge kind="simulated" /> : null}
             {acknowledged ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
                 <Check aria-hidden="true" className="size-3" /> Acknowledged
@@ -177,6 +184,12 @@ function DrawerContent({
                 {node.riskScore}
                 <span className="text-base font-medium text-muted-foreground">/100</span>
               </p>
+              {node.riskScore !== node.baseRiskScore ? (
+                <p className="mt-0.5 text-[11px] text-warning">
+                  Simulated · baseline {node.baseRiskScore} ({node.riskScore > node.baseRiskScore ? '+' : ''}
+                  {node.riskScore - node.baseRiskScore})
+                </p>
+              ) : null}
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">72h forecast</p>
@@ -275,7 +288,8 @@ function DrawerContent({
           </h3>
           <ul className="mt-3 flex flex-col gap-1">
             {[...inbound.map((c) => ({ ...c, dir: 'in' as const })), ...outbound.map((c) => ({ ...c, dir: 'out' as const }))].map(
-              ({ route, node: peer, dir }) => {
+              ({ route, node: basePeer, dir }) => {
+                const peer = nodesById[basePeer.id] ?? basePeer
                 const peerStatus = statusFromRisk(peer.riskScore)
                 return (
                   <li key={route.id}>

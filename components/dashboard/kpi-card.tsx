@@ -16,6 +16,8 @@ export interface KpiCardProps {
   icon: LucideIcon
   sparkline: { index: number; value: number }[]
   caption: string
+  simulated?: boolean
+  baselineValue?: string
 }
 
 export function KpiCard({
@@ -28,6 +30,8 @@ export function KpiCard({
   icon: Icon,
   sparkline,
   caption,
+  simulated,
+  baselineValue,
 }: KpiCardProps) {
   const gradientId = useId().replace(/:/g, '')
   const isUp = delta >= 0
@@ -36,9 +40,21 @@ export function KpiCard({
   const DeltaIcon = isUp ? ArrowUpRight : ArrowDownRight
 
   return (
-    <article className="flex min-w-0 flex-col gap-3 rounded-xl border bg-card p-4">
+    <article
+      className={cn(
+        'flex min-w-0 flex-col gap-3 rounded-xl border bg-card p-4 transition-colors',
+        simulated && 'border-warning/40 bg-warning/[0.03]',
+      )}
+    >
       <div className="flex items-center justify-between gap-2">
-        <h3 className="truncate text-xs font-medium text-muted-foreground">{label}</h3>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <h3 className="truncate text-xs font-medium text-muted-foreground">{label}</h3>
+          {simulated ? (
+            <span className="shrink-0 rounded bg-warning/10 px-1 py-px font-mono text-[9px] font-semibold tracking-wide text-warning ring-1 ring-inset ring-warning/30">
+              SIM
+            </span>
+          ) : null}
+        </div>
         <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground">
           <Icon aria-hidden="true" className="size-3.5" />
         </span>
@@ -63,6 +79,11 @@ export function KpiCard({
             </span>
             <span className="ml-1 font-normal text-muted-foreground">{caption}</span>
           </p>
+          {simulated && baselineValue ? (
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Baseline <span className="font-mono tabular-nums">{baselineValue}</span>
+            </p>
+          ) : null}
         </div>
         <div className="h-10 w-20 shrink-0" aria-hidden="true">
           <ResponsiveContainer width="100%" height="100%">

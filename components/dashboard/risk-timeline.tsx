@@ -16,7 +16,9 @@ import {
 } from 'recharts'
 import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 import { formatHourOffset } from '@/lib/format'
-import { REGION_LABELS, generateRiskTimeline, type RegionFilter, type TimelinePoint } from '@/lib/supply-data'
+import { simulateTimeline, type Scenario, type SimulatedTimelinePoint } from '@/lib/simulation'
+import { REGION_LABELS, generateRiskTimeline, type RegionFilter } from '@/lib/supply-data'
+import { DataBadge } from './data-badge'
 import { cn } from '@/lib/utils'
 import { Panel } from './panel'
 
@@ -31,9 +33,20 @@ const DRIVERS: { key: DriverKey; label: string; color: string }[] = [
   { key: 'geopolitical', label: 'Geopolitical', color: 'var(--chart-5)' },
 ]
 
-export function RiskTimeline({ region }: { region: RegionFilter }) {
+export function RiskTimeline({
+  region,
+  scenario,
+  simulated,
+}: {
+  region: RegionFilter
+  scenario: Scenario
+  simulated: boolean
+}) {
   const gradientId = useId().replace(/:/g, '')
-  const data = useMemo(() => generateRiskTimeline(region), [region])
+  const data = useMemo(
+    () => simulateTimeline(generateRiskTimeline(region), scenario, region),
+    [region, scenario],
+  )
   const [visible, setVisible] = useState<Record<DriverKey, boolean>>({
     weather: true,
     congestion: true,
@@ -45,8 +58,13 @@ export function RiskTimeline({ region }: { region: RegionFilter }) {
     const peak = data.reduce((max, p) => (p.composite > max.composite ? p : max), data[0])
     const hoursAbove = data.filter((p) => p.composite >= THRESHOLD).length
     const avg = data.reduce((s, p) => s + p.composite, 0) / data.length
-    return { peak, hoursAbove, avg }
-  }, [data])
+    const simPeak = data.reduce((max, p) => (p.simulated > max.simulated ? p : max), data[0])
+    const simHoursAbove = data.filter((p) => p.simulated >= THRESHOLD).length
+    const simAvg = data.reduce((s, p) => s + p.simulated, 0) / data.length
+    return simulated
+      ? { peak: { hour: simPeak.hour, composite: simPeak.simulated }, hoursAbove: simHoursAbove, avg: simAvg, baseAvg: avg }
+      : { peak, hoursAbove, avg, baseAvg: avg }
+  }, [data, simulated])
 
   return (
     <Panel
@@ -55,6 +73,8 @@ export function RiskTimeline({ region }: { region: RegionFilter }) {
       description={`${REGION_LABELS[region]} composite disruption risk with 80% confidence band`}
       actions={
         <div role="group" aria-label="Toggle risk drivers" className="flex flex-wrap items-center gap-1">
+          <DataBadge kind="demo" />
+          {simulated ? <DataBadge kind="simulated" /> : null}
           {DRIVERS.map((driver) => (
             <button
               key={driver.key}
@@ -77,7 +97,12 @@ export function RiskTimeline({ region }: { region: RegionFilter }) {
       <dl className="grid grid-cols-3 gap-3">
         <Stat label="Peak risk" value={stats.peak.composite.toFixed(0)} hint={formatHourOffset(stats.peak.hour)} tone={stats.peak.composite >= THRESHOLD ? 'danger' : 'default'} />
         <Stat label="Hours above threshold" value={`${stats.hoursAbove}h`} hint={`Threshold ${THRESHOLD}`} tone={stats.hoursAbove > 0 ? 'warning' : 'default'} />
-        <Stat label="72h average" value={stats.avg.toFixed(1)} hint="Composite index" />
+        <Stat
+          label="72h average"
+          value={stats.avg.toFixed(1)}
+          hint={simulated ? `Baseline ${stats.baseAvg.toFixed(1)} · simulated` : 'Composite index'}
+          tone={simulated && stats.avg > stats.baseAvg + 0.5 ? 'warning' : 'default'}
+        />
       </dl>
 
       <div className="h-64 w-full md:h-72" role="img" aria-label={`Risk forecast chart. Peak ${stats.peak.composite.toFixed(0)} at ${formatHourOffset(stats.peak.hour)}.`}>
@@ -131,6 +156,17 @@ export function RiskTimeline({ region }: { region: RegionFilter }) {
               fill={`url(#${gradientId})`}
               isAnimationActive={false}
             />
+            {simulated ? (
+              <Line
+                type="monotone"
+                dataKey="simulated"
+                stroke="var(--warning)"
+                strokeWidth={2}
+                strokeDasharray="5 4"
+                dot={false}
+                isAnimationActive={false}
+              />
+            ) : null}
             {DRIVERS.filter((d) => visible[d.key]).map((driver) => (
               <Line
                 key={driver.key}
@@ -179,7 +215,8 @@ function Stat({
 
 function TimelineTooltip({ active, payload }: TooltipContentProps<ValueType, NameType>) {
   if (!active || !payload?.length) return null
-  const point = payload[0].payload as TimelinePoint
+  const point = payload[0].payload as SimulatedTimelinePoint
+  const showSim = Math.abs(point.simulated - point.composite) > 0.05
   return (
     <div className="min-w-44 rounded-lg border bg-popover px-3 py-2 text-xs shadow-xl">
       <p className="font-medium">
@@ -196,6 +233,15 @@ function TimelineTooltip({ active, payload }: TooltipContentProps<ValueType, Nam
       <p className="text-[11px] text-muted-foreground">
         Range {point.band[0].toFixed(0)}–{point.band[1].toFixed(0)}
       </p>
+      {showSim ? (
+        <div className="mt-1 flex items-center justify-between gap-4 text-warning">
+          <span className="flex items-center gap-1.5">
+            <span className="h-0.5 w-2.5 rounded-full bg-warning" aria-hidden="true" />
+            Simulated
+          </span>
+          <span className="font-mono font-semibold tabular-nums">{point.simulated.toFixed(1)}</span>
+        </div>
+      ) : null}
       <div className="mt-1.5 flex flex-col gap-0.5 border-t pt-1.5">
         {DRIVERS.map((d) => (
           <div key={d.key} className="flex items-center justify-between gap-4 text-muted-foreground">

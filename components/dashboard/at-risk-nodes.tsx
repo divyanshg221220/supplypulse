@@ -2,7 +2,8 @@
 
 import { ChevronRight } from 'lucide-react'
 import { STATUS_META } from '@/lib/format'
-import { statusFromRisk, type SupplyNode } from '@/lib/supply-data'
+import type { SimulatedNode } from '@/lib/simulation'
+import { statusFromRisk } from '@/lib/supply-data'
 import { cn } from '@/lib/utils'
 import { NodeTypeIcon } from './node-type-icon'
 import { Panel } from './panel'
@@ -12,7 +13,7 @@ export function AtRiskNodes({
   selectedNodeId,
   onSelectNode,
 }: {
-  nodes: SupplyNode[]
+  nodes: SimulatedNode[]
   selectedNodeId: string | null
   onSelectNode: (id: string) => void
 }) {
@@ -51,8 +52,16 @@ export function AtRiskNodes({
                     <span className="truncate text-[11px] text-muted-foreground">{node.city}</span>
                   </span>
                 </span>
-                <span className={cn('w-8 text-right font-mono text-sm font-semibold tabular-nums', meta.textClass)}>
-                  {node.riskScore}
+                <span className="flex w-12 flex-col items-end">
+                  <span className={cn('font-mono text-sm font-semibold tabular-nums', meta.textClass)}>
+                    {node.riskScore}
+                  </span>
+                  {node.riskScore !== node.baseRiskScore ? (
+                    <span className="font-mono text-[10px] text-warning tabular-nums" title="Simulated change vs baseline">
+                      {node.riskScore > node.baseRiskScore ? '+' : ''}
+                      {node.riskScore - node.baseRiskScore} sim
+                    </span>
+                  ) : null}
                 </span>
                 <ChevronRight aria-hidden="true" className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
               </button>

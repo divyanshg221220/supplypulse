@@ -5,11 +5,12 @@ import L, { type LatLngTuple } from 'leaflet'
 import { Fragment, useEffect, useMemo } from 'react'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { STATUS_META, formatCompact } from '@/lib/format'
+import type { ConfirmedReroute } from '@/lib/reroute'
+import type { SimulatedNode } from '@/lib/simulation'
 import {
   NODE_BY_ID,
   NODE_TYPE_LABELS,
   ROUTES,
-  routeStatus,
   statusFromRisk,
   type NodeStatus,
   type RegionFilter,
@@ -18,13 +19,17 @@ import {
 } from '@/lib/supply-data'
 
 export interface LogisticsMapProps {
-  nodes: SupplyNode[]
+  nodes: SimulatedNode[]
   region: RegionFilter
   selectedNodeId: string | null
   onSelectNode: (id: string) => void
   showRoutes: boolean
   statusFilter: Record<NodeStatus, boolean>
+  nodesById: Record<string, SimulatedNode>
+  reroutes: Record<string, ConfirmedReroute>
 }
+
+const REROUTE_COLOR = '#5eead4'
 
 const MODE_DASH: Record<SupplyRoute['mode'], string | undefined> = {
   sea: '6 6',
@@ -125,25 +130,41 @@ export default function LogisticsMap({
   onSelectNode,
   showRoutes,
   statusFilter,
+  nodesById,
+  reroutes,
 }: LogisticsMapProps) {
   const regionNodeIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
 
   const routes = useMemo(
     () =>
       ROUTES.map((route) => {
-        const from = NODE_BY_ID[route.from]
-        const to = NODE_BY_ID[route.to]
+        const from = nodesById[route.from]
+        const to = nodesById[route.to]
         return {
           route,
-          status: routeStatus(route),
+          status: statusFromRisk(Math.max(from.riskScore, to.riskScore)),
           inRegion: regionNodeIds.has(route.from) || regionNodeIds.has(route.to),
+          rerouted: Boolean(reroutes[route.id]),
           segments: buildArcSegments(from, to),
         }
       }),
-    [regionNodeIds],
+    [regionNodeIds, nodesById, reroutes],
   )
 
-  const allNodes = Object.values(NODE_BY_ID)
+  const reroutePaths = useMemo(
+    () =>
+      Object.values(reroutes).map((reroute) => {
+        const ids = reroute.option.path
+        const segments: LatLngTuple[][] = []
+        for (let i = 0; i < ids.length - 1; i++) {
+          segments.push(...buildArcSegments(NODE_BY_ID[ids[i]], NODE_BY_ID[ids[i + 1]]))
+        }
+        return { id: reroute.routeId, segments }
+      }),
+    [reroutes],
+  )
+
+  const allNodes = Object.values(nodesById)
 
   return (
     <MapContainer
@@ -169,17 +190,17 @@ export default function LogisticsMap({
       <MapController nodes={nodes} region={region} selectedNodeId={selectedNodeId} />
 
       {showRoutes
-        ? routes.map(({ route, status, inRegion, segments }) => {
+        ? routes.map(({ route, status, inRegion, rerouted, segments }) => {
             if (!statusFilter[status]) return null
             const color = STATUS_META[status].hex
             return segments.map((positions, index) => (
               <Polyline
-                key={`${route.id}-${index}-${inRegion}`}
+                key={`${route.id}-${index}-${inRegion}-${status}-${rerouted}`}
                 positions={positions}
                 pathOptions={{
                   color,
                   weight: status === 'critical' ? 2.5 : 1.75,
-                  opacity: inRegion ? 0.75 : 0.12,
+                  opacity: rerouted ? 0.18 : inRegion ? 0.75 : 0.12,
                   dashArray: MODE_DASH[route.mode],
                   className: inRegion && MODE_DASH[route.mode] ? 'sp-route-flow' : undefined,
                   interactive: false,
@@ -189,6 +210,23 @@ export default function LogisticsMap({
           })
         : null}
 
+      {reroutePaths.map(({ id, segments }) =>
+        segments.map((positions, index) => (
+          <Polyline
+            key={`reroute-${id}-${index}`}
+            positions={positions}
+            pathOptions={{
+              color: REROUTE_COLOR,
+              weight: 3,
+              opacity: 0.95,
+              dashArray: '8 6',
+              className: 'sp-route-flow',
+              interactive: false,
+            }}
+          />
+        )),
+      )}
+
       {allNodes.map((node) => {
         const status = statusFromRisk(node.riskScore)
         if (!statusFilter[status]) return null
@@ -197,7 +235,7 @@ export default function LogisticsMap({
         const isSelected = node.id === selectedNodeId
         const radius = 5 + Math.min(node.activeShipments / 30, 6)
         return (
-          <Fragment key={`${node.id}-${inRegion}-${isSelected}`}>
+          <Fragment key={`${node.id}-${inRegion}-${isSelected}-${status}`}>
             {status === 'critical' && inRegion ? (
               <CircleMarker
                 center={[node.lat, node.lng]}
@@ -207,6 +245,20 @@ export default function LogisticsMap({
                   fill: false,
                   weight: 2,
                   className: 'sp-node-pulse',
+                  interactive: false,
+                }}
+              />
+            ) : null}
+            {node.riskScore !== node.baseRiskScore && inRegion ? (
+              <CircleMarker
+                center={[node.lat, node.lng]}
+                radius={radius + 6}
+                pathOptions={{
+                  color: node.riskScore > node.baseRiskScore ? '#fbbf24' : '#5eead4',
+                  fill: false,
+                  weight: 1.5,
+                  dashArray: '3 3',
+                  opacity: 0.9,
                   interactive: false,
                 }}
               />
@@ -233,6 +285,12 @@ export default function LogisticsMap({
                     <span style={{ color }} className="font-mono font-semibold">
                       Risk {node.riskScore}
                     </span>
+                    {node.riskScore !== node.baseRiskScore ? (
+                      <span className="font-mono text-[10px] text-warning">
+                        SIM ({node.riskScore > node.baseRiskScore ? '+' : ''}
+                        {node.riskScore - node.baseRiskScore} vs {node.baseRiskScore})
+                      </span>
+                    ) : null}
                     <span className="text-muted-foreground">
                       {formatCompact(node.throughput)} {node.throughputUnit}
                     </span>
