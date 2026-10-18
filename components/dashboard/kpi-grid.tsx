@@ -1,6 +1,6 @@
 'use client'
 
-import { Clock, Gauge, PackageCheck, ShieldAlert, Ship } from 'lucide-react'
+import { Activity, Clock, Gauge, PackageCheck, ShieldAlert, Ship } from 'lucide-react'
 import { useMemo } from 'react'
 import { formatNumber } from '@/lib/format'
 import {
@@ -57,6 +57,14 @@ export function KpiGrid({
       nodes.map((n) => ('simulatedBufferDays' in n && isSimulated ? n.simulatedBufferDays : n.bufferDays))
     )
 
+    const capacity = average(
+      nodes.map((n) =>
+        'simulatedCapacityUtilization' in n && isSimulated
+          ? n.simulatedCapacityUtilization
+          : n.capacityUtilization
+      )
+    )
+
     // Base values to calculate simulation shift
     const baseRiskIndex = average(nodes.map((n) => n.riskScore))
     const baseOnTime =
@@ -64,12 +72,14 @@ export function KpiGrid({
       Math.max(nodes.reduce((sum, n) => sum + n.activeShipments, 0), 1)
     const baseAtRisk = nodes.filter((n) => statusFromRisk(n.riskScore) !== 'healthy').length
     const baseBuffer = average(nodes.map((n) => n.bufferDays))
+    const baseCapacity = average(nodes.map((n) => n.capacityUtilization))
 
     const riskSeries = generateSparkline(`${region}-risk`, riskIndex, 2.2)
     const onTimeSeries = generateSparkline(`${region}-ontime`, onTime, 0.9)
     const shipmentSeries = generateSparkline(`${region}-ships`, totalShipments, totalShipments * 0.03)
     const atRiskSeries = generateSparkline(`${region}-atrisk`, atRisk, 0.6)
     const bufferSeries = generateSparkline(`${region}-buffer`, buffer, 0.5)
+    const capacitySeries = generateSparkline(`${region}-capacity`, capacity, 1.2)
 
     return [
       {
@@ -125,11 +135,22 @@ export function KpiGrid({
         caption: isSimulated ? 'vs baseline' : 'vs 7d',
         isSimulated,
       },
+      {
+        label: 'Capacity Utilization',
+        value: capacity.toFixed(1),
+        unit: '%',
+        delta: isSimulated ? capacity - baseCapacity : weekDelta(capacitySeries),
+        deltaSuffix: 'pp',
+        icon: Activity,
+        sparkline: capacitySeries,
+        caption: isSimulated ? 'vs baseline' : 'vs 7d',
+        isSimulated,
+      },
     ]
   }, [nodes, region, isSimulated])
 
   return (
-    <section aria-label="Key performance indicators" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+    <section aria-label="Key performance indicators" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
       {cards.map((card) => (
         <KpiCard key={card.label} {...card} />
       ))}

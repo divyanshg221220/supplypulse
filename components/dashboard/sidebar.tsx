@@ -50,16 +50,24 @@ interface SidebarProps {
   onClose: () => void
   unreadAlerts: number
   onOpenRerouteModal?: () => void
+  activeSection?: string
+  onNavigateSection?: (sectionId: string) => void
 }
 
-export function Sidebar({ open, onClose, unreadAlerts }: SidebarProps) {
+export function Sidebar({
+  open,
+  onClose,
+  unreadAlerts,
+  activeSection = 'overview',
+  onNavigateSection,
+}: SidebarProps) {
   return (
     <>
       <div
         aria-hidden="true"
         onClick={onClose}
         className={cn(
-          'fixed inset-0 z-[1100] bg-black/60 backdrop-blur-sm transition-opacity lg:hidden',
+          'fixed inset-0 z-[1200] bg-black/60 backdrop-blur-sm transition-opacity lg:hidden',
           open ? 'opacity-100' : 'pointer-events-none opacity-0',
         )}
       />
@@ -67,12 +75,20 @@ export function Sidebar({ open, onClose, unreadAlerts }: SidebarProps) {
         id="app-sidebar"
         aria-label="Primary"
         className={cn(
-          'fixed inset-y-0 left-0 z-[1200] flex w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-dvh lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-[1300] flex w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-dvh lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         <div className="flex h-16 items-center justify-between gap-2 border-b border-sidebar-border px-5">
-          <a href="#overview" className="flex items-center gap-2.5" onClick={onClose}>
+          <a
+            href="#overview"
+            className="flex items-center gap-2.5"
+            onClick={(e) => {
+              e.preventDefault()
+              onNavigateSection?.('overview')
+              onClose()
+            }}
+          >
             <span className="flex size-8 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-inset ring-primary/30">
               <Activity aria-hidden="true" className="size-4.5" />
             </span>
@@ -95,23 +111,42 @@ export function Sidebar({ open, onClose, unreadAlerts }: SidebarProps) {
             Monitor
           </p>
           <ul className="flex flex-col gap-0.5">
-            {PRIMARY_NAV.map((item, index) => (
-              <SidebarLink
-                key={item.label}
-                item={item}
-                active={index === 0}
-                badge={item.badgeKey === 'alerts' ? unreadAlerts : undefined}
-                onNavigate={onClose}
-              />
-            ))}
+            {PRIMARY_NAV.map((item) => {
+              const targetId = item.href.replace('#', '')
+              const isActive = activeSection === targetId
+              return (
+                <SidebarLink
+                  key={item.label}
+                  item={item}
+                  active={isActive}
+                  badge={item.badgeKey === 'alerts' ? unreadAlerts : undefined}
+                  onNavigate={() => {
+                    onNavigateSection?.(targetId)
+                    onClose()
+                  }}
+                />
+              )
+            })}
           </ul>
           <p className="px-2 pb-2 pt-6 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Workspace
           </p>
           <ul className="flex flex-col gap-0.5">
-            {SECONDARY_NAV.map((item) => (
-              <SidebarLink key={item.label} item={item} onNavigate={onClose} />
-            ))}
+            {SECONDARY_NAV.map((item) => {
+              const targetId = item.href.replace('#', '')
+              const isActive = activeSection === targetId
+              return (
+                <SidebarLink
+                  key={item.label}
+                  item={item}
+                  active={isActive}
+                  onNavigate={() => {
+                    onNavigateSection?.(targetId)
+                    onClose()
+                  }}
+                />
+              )
+            })}
           </ul>
         </nav>
 
@@ -161,12 +196,15 @@ function SidebarLink({
     <li>
       <a
         href={item.href}
-        onClick={onNavigate}
+        onClick={(e) => {
+          e.preventDefault()
+          onNavigate()
+        }}
         aria-current={active ? 'page' : undefined}
         className={cn(
-          'group flex items-center gap-3 rounded-md px-2.5 py-2 text-sm transition-colors',
+          'group flex items-center gap-3 rounded-md px-2.5 py-2 text-sm transition-colors cursor-pointer',
           active
-            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-xs'
             : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
         )}
       >

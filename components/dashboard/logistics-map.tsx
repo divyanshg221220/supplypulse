@@ -3,7 +3,7 @@
 import 'leaflet/dist/leaflet.css'
 import L, { type LatLngTuple } from 'leaflet'
 import { Fragment, useEffect, useMemo } from 'react'
-import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap, ZoomControl } from 'react-leaflet'
 import { STATUS_META, formatCompact } from '@/lib/format'
 import {
   NODE_BY_ID,
@@ -161,22 +161,24 @@ export default function LogisticsMap({
       center={[25, 20]}
       zoom={2}
       minZoom={2}
-      maxZoom={8}
+      maxZoom={9}
       worldCopyJump={false}
       maxBounds={[
         [-70, -200],
         [82, 200],
       ]}
-      scrollWheelZoom
+      scrollWheelZoom={false}
+      zoomControl={false}
       className="size-full"
       attributionControl
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        subdomains="abcd"
+        attribution='&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, DeLorme, NAVTEQ'
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+        maxZoom={16}
         noWrap
       />
+      <ZoomControl position="bottomright" />
       <MapController nodes={nodes} region={region} selectedNodeId={selectedNodeId} />
 
       {showRoutes

@@ -26,7 +26,7 @@ export function Panel({
       id={id}
       aria-labelledby={headingId}
       className={cn(
-        'flex min-w-0 flex-col rounded-xl border bg-card text-card-foreground',
+        'flex min-w-0 flex-col rounded-xl border bg-card text-card-foreground scroll-mt-20',
         className,
       )}
     >

@@ -108,14 +108,20 @@ export function EventIntelligence({
     <Panel
       id="event-intelligence"
       title="AI Event Intelligence"
-      description="Local NLP engine parsing unstructured advisories into structured simulation parameters"
+      description="Neural NLP engine parsing unstructured advisories into structured simulation parameters"
       actions={
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-            <Cpu className="size-3" /> Local Text Extractor
-          </span>
-          <span className="rounded-full border border-border bg-secondary px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-            DEMO ENGINE
+          {extractedEvent?.isLiveGemini ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold text-primary">
+              <Sparkles className="size-3 text-primary animate-pulse" /> Gemini {extractedEvent.modelVersion || '3.8 Flash'} Live
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <Cpu className="size-3" /> Deterministic NLP Fallback
+            </span>
+          )}
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-medium text-emerald-400">
+            API READY
           </span>
         </div>
       }
@@ -159,8 +165,9 @@ export function EventIntelligence({
         />
 
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-muted-foreground">
-            Runs deterministic regex & NLP classification locally in browser.
+          <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+            <Sparkles className="size-3 text-primary" />
+            Runs neural extraction via Gemini REST API with local safety fallback.
           </span>
           <button
             type="button"

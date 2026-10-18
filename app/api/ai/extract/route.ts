@@ -49,6 +49,78 @@ Always respond with valid, raw JSON conforming strictly to this format:
 }
 `
 
+import { execFile } from 'child_process'
+import { promisify } from 'util'
+
+const execFileAsync = promisify(execFile)
+
+const CANDIDATE_MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-flash-latest']
+
+async function requestGeminiModel(
+  model: string,
+  payloadStr: string
+): Promise<{ text: string; model: string }> {
+  // Method 1: Try curl.exe on Windows/Linux to bypass Node undici IPv6 connection timeouts
+  try {
+    const { stdout } = await execFileAsync(
+      'curl.exe',
+      [
+        '-s',
+        '--connect-timeout',
+        '8',
+        '-m',
+        '25',
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`,
+        '-H',
+        'Content-Type: application/json',
+        '-d',
+        payloadStr,
+      ],
+      { maxBuffer: 10 * 1024 * 1024 }
+    )
+
+    if (stdout && stdout.trim().startsWith('{')) {
+      const json = JSON.parse(stdout)
+      if (json.error) {
+        throw new Error(`[${model}] API error ${json.error.code}: ${json.error.message}`)
+      }
+      const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text
+      if (candidateText) {
+        return { text: candidateText, model }
+      }
+    }
+  } catch (curlErr: any) {
+    // If curl isn't available or fails, proceed to fetch
+    if (!curlErr.message?.includes('API error')) {
+      console.warn(`curl.exe attempt for ${model} failed, attempting fetch:`, curlErr.message)
+    } else {
+      throw curlErr
+    }
+  }
+
+  // Method 2: Standard fetch fallback
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`
+  const geminiRes = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(18000),
+    body: payloadStr,
+  })
+
+  if (!geminiRes.ok) {
+    const errText = await geminiRes.text()
+    throw new Error(`[${model}] HTTP ${geminiRes.status}: ${errText}`)
+  }
+
+  const geminiData = await geminiRes.json()
+  const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!candidateText) {
+    throw new Error(`[${model}] No candidate text received`)
+  }
+
+  return { text: candidateText, model }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
@@ -59,51 +131,85 @@ export async function POST(req: Request) {
     }
 
     if (GEMINI_API_KEY) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`
-        const geminiRes = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(5000),
-          body: JSON.stringify({
-            contents: [
+      const payloadStr = JSON.stringify({
+        contents: [
+          {
+            parts: [
               {
-                parts: [
-                  {
-                    text: `${SYSTEM_INSTRUCTION}\n\nUnstructured logistics text to extract:\n"""\n${rawText}\n"""`,
-                  },
-                ],
+                text: `${SYSTEM_INSTRUCTION}\n\nUnstructured logistics text to extract:\n"""\n${rawText}\n"""`,
               },
             ],
-            generationConfig: {
-              responseMimeType: 'application/json',
-              temperature: 0.1,
-            },
-          }),
-        })
+          },
+        ],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.1,
+        },
+      })
 
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json()
-          const candidateText =
-            geminiData.candidates?.[0]?.content?.parts?.[0]?.text
-          if (candidateText) {
-            const parsed = JSON.parse(candidateText) as ExtractedEvent
-            return NextResponse.json({
-              ...parsed,
-              modelVersion: 'gemini-3.8-flash',
-              isLiveGemini: true,
-            })
+      for (const model of CANDIDATE_MODELS) {
+        try {
+          const { text: candidateText, model: usedModel } = await requestGeminiModel(
+            model,
+            payloadStr
+          )
+
+          // Sanitize raw response if fenced
+          const cleaned = candidateText
+            .replace(/^```json\s*/i, '')
+            .replace(/^```\s*/i, '')
+            .replace(/```\s*$/i, '')
+            .trim()
+
+          const parsed = JSON.parse(cleaned) as Partial<ExtractedEvent>
+
+          // Validate and ensure complete fields
+          const fallback = generateLocalFallback(rawText)
+          const result: ExtractedEvent = {
+            headline: parsed.headline || fallback.headline,
+            incidentCategory: parsed.incidentCategory || fallback.incidentCategory,
+            severity: parsed.severity || fallback.severity,
+            impactedModes: parsed.impactedModes || fallback.impactedModes,
+            affectedLocations: parsed.affectedLocations?.length
+              ? parsed.affectedLocations
+              : fallback.affectedLocations,
+            matchedNodeIds: parsed.matchedNodeIds?.length
+              ? parsed.matchedNodeIds
+              : fallback.matchedNodeIds,
+            primaryNodeId: parsed.primaryNodeId || fallback.primaryNodeId,
+            confidenceScore:
+              typeof parsed.confidenceScore === 'number'
+                ? parsed.confidenceScore > 1
+                  ? parsed.confidenceScore
+                  : Math.round(parsed.confidenceScore * 100)
+                : fallback.confidenceScore,
+            estimatedDelayDays:
+              typeof parsed.estimatedDelayDays === 'number'
+                ? parsed.estimatedDelayDays
+                : fallback.estimatedDelayDays,
+            suggestedSimParams: {
+              ...fallback.suggestedSimParams,
+              ...(parsed.suggestedSimParams || {}),
+            },
+            keyEntities: parsed.keyEntities?.length ? parsed.keyEntities : fallback.keyEntities,
+            summary: parsed.summary || fallback.summary,
+            recommendedRemediation:
+              parsed.recommendedRemediation || fallback.recommendedRemediation,
+            riskAttributions: parsed.riskAttributions?.length
+              ? parsed.riskAttributions
+              : fallback.riskAttributions,
+            isLiveGemini: true,
+            modelVersion: usedModel,
           }
-        } else {
-          const errText = await geminiRes.text()
-          console.warn('Gemini API returned error, falling back to local extractor:', errText)
+
+          return NextResponse.json(result)
+        } catch (modelErr: any) {
+          console.warn(`Gemini model ${model} invocation attempt failed:`, modelErr.message)
         }
-      } catch (geminiErr) {
-        console.warn('Failed to call Gemini API, falling back to local extractor:', geminiErr)
       }
     }
 
-    // Graceful fallback to deterministic extractor
+    // Graceful fallback to deterministic extractor if all Gemini models failed
     return NextResponse.json(generateLocalFallback(rawText))
   } catch (error) {
     console.error('Error in /api/ai/extract:', error)

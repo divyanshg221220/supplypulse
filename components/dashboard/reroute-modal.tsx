@@ -366,9 +366,9 @@ export function RerouteModal({
                       </div>
 
                       <div className="mt-3">
-                        <div className="flex items-center gap-2">
-                          <Icon aria-hidden="true" className="size-4 text-primary shrink-0" />
-                          <h4 className="text-sm font-semibold text-foreground leading-snug line-clamp-1">
+                        <div className="flex items-start gap-2">
+                          <Icon aria-hidden="true" className="size-4 text-primary shrink-0 mt-0.5" />
+                          <h4 className="text-sm font-semibold text-foreground leading-snug line-clamp-2 min-h-[2.5rem]">
                             {alt.name}
                           </h4>
                         </div>
@@ -379,50 +379,57 @@ export function RerouteModal({
 
                       {/* Trade-off metrics grid */}
                       <dl className="mt-4 grid grid-cols-3 gap-2 border-t border-border/60 pt-3">
-                        <div className="rounded-lg bg-background/60 p-2">
-                          <dt className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            <Clock aria-hidden="true" className="size-3" /> Transit
+                        <div className="rounded-lg bg-background/60 p-2 flex flex-col justify-between min-w-0">
+                          <dt className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+                            <Clock aria-hidden="true" className="size-3 shrink-0" />
+                            <span className="truncate">Transit</span>
                           </dt>
-                          <dd className="mt-0.5 font-mono text-xs font-semibold">
-                            {alt.transitDays}d
+                          <dd className="mt-1 flex flex-col min-w-0">
+                            <span className="font-mono text-xs font-bold text-foreground truncate">
+                              {alt.transitDays}d
+                            </span>
                             <span
                               className={cn(
-                                'ml-1 text-[10px]',
+                                'text-[10px] font-mono leading-none mt-0.5 font-medium truncate',
                                 alt.transitDaysDelta <= 0 ? 'text-success' : 'text-destructive'
                               )}
                             >
-                              ({alt.transitDaysDelta > 0 ? '+' : ''}
-                              {alt.transitDaysDelta}d)
+                              {alt.transitDaysDelta > 0 ? '+' : ''}{alt.transitDaysDelta}d
                             </span>
                           </dd>
                         </div>
 
-                        <div className="rounded-lg bg-background/60 p-2">
-                          <dt className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            <DollarSign aria-hidden="true" className="size-3" /> Cost
+                        <div className="rounded-lg bg-background/60 p-2 flex flex-col justify-between min-w-0">
+                          <dt className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+                            <DollarSign aria-hidden="true" className="size-3 shrink-0" />
+                            <span className="truncate">Cost</span>
                           </dt>
-                          <dd className="mt-0.5 font-mono text-xs font-semibold">
-                            ${formatNumber(alt.costEstimateUsd)}
+                          <dd className="mt-1 flex flex-col min-w-0">
+                            <span className="font-mono text-xs font-bold text-foreground truncate">
+                              ${formatNumber(alt.costEstimateUsd)}
+                            </span>
                             <span
                               className={cn(
-                                'ml-0.5 text-[10px]',
+                                'text-[10px] font-mono leading-none mt-0.5 font-medium truncate',
                                 alt.costDeltaPct <= 0 ? 'text-success' : 'text-amber-400'
                               )}
                             >
-                              ({alt.costDeltaPct > 0 ? '+' : ''}
-                              {alt.costDeltaPct}%)
+                              {alt.costDeltaPct > 0 ? '+' : ''}{alt.costDeltaPct}%
                             </span>
                           </dd>
                         </div>
 
-                        <div className="rounded-lg bg-background/60 p-2">
-                          <dt className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            <Shield aria-hidden="true" className="size-3" /> Risk
+                        <div className="rounded-lg bg-background/60 p-2 flex flex-col justify-between min-w-0">
+                          <dt className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+                            <Shield aria-hidden="true" className="size-3 shrink-0" />
+                            <span className="truncate">Risk</span>
                           </dt>
-                          <dd className="mt-0.5 font-mono text-xs font-semibold text-success">
-                            {alt.riskScore}
-                            <span className="ml-1 text-[10px] text-success">
-                              ({alt.riskDelta})
+                          <dd className="mt-1 flex flex-col min-w-0">
+                            <span className="font-mono text-xs font-bold text-success truncate">
+                              {alt.riskScore}/100
+                            </span>
+                            <span className="text-[10px] font-mono leading-none mt-0.5 text-success font-medium truncate">
+                              {alt.riskDelta} pts
                             </span>
                           </dd>
                         </div>

@@ -228,10 +228,12 @@ async function safeFetch<T>(
 ): Promise<ApiResponse<T>> {
   const timestamp = Date.now()
   const targetUrl = API_BASE_URL ? `${API_BASE_URL}${endpoint}` : endpoint
+  // Use a longer timeout for AI neural extraction tasks to avoid prematurely aborting LLM generation
+  const timeoutMs = endpoint.includes('/ai/') ? 25000 : 10000
 
   try {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 8000)
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
     const res = await fetch(targetUrl, {
       ...options,
       signal: controller.signal,
@@ -282,22 +284,36 @@ export async function checkApiHealth(): Promise<{
   online: boolean
   baseUrl: string
   mode: 'connected' | 'demo-fallback'
+  geminiOnline?: boolean
 }> {
-  if (!API_BASE_URL) {
-    return { online: false, baseUrl: '', mode: 'demo-fallback' }
-  }
+  const targetUrl = API_BASE_URL ? `${API_BASE_URL}/api/health` : '/api/health'
   try {
-    const res = await fetch(`${API_BASE_URL}/health`, {
+    const res = await fetch(targetUrl, {
       method: 'GET',
-      signal: AbortSignal.timeout(2000),
+      signal: AbortSignal.timeout(3000),
     })
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}))
+      return {
+        online: true,
+        baseUrl: API_BASE_URL || 'Native Next.js API',
+        mode: 'connected',
+        geminiOnline: Boolean(data.geminiOnline),
+      }
+    }
     return {
-      online: res.ok,
-      baseUrl: API_BASE_URL,
-      mode: res.ok ? 'connected' : 'demo-fallback',
+      online: false,
+      baseUrl: API_BASE_URL || '',
+      mode: 'demo-fallback',
+      geminiOnline: false,
     }
   } catch {
-    return { online: false, baseUrl: API_BASE_URL, mode: 'demo-fallback' }
+    return {
+      online: false,
+      baseUrl: API_BASE_URL || '',
+      mode: 'demo-fallback',
+      geminiOnline: false,
+    }
   }
 }
 

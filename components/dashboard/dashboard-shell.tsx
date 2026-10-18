@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -62,11 +62,71 @@ export function DashboardShell() {
   const [rerouteToNodeId, setRerouteToNodeId] = useState('rotterdam-port')
   const [lastRerouteNotice, setLastRerouteNotice] = useState<RerouteConfirmation | null>(null)
 
-  // Active view section tab filter for fast jumping
+  // Active view section tab filter for fast jumping & scroll spy
   const [activeTab, setActiveTab] = useState<'all' | 'overview' | 'multimodal' | 'simulator' | 'anomalies' | 'ai'>('all')
+  const [activeSection, setActiveSection] = useState('overview')
 
   // Transport Mode Filter synced with map
   const [mapMode, setMapMode] = useState<TransportMode | 'all'>('all')
+
+  const scrollToSection = useCallback((id: string) => {
+    setActiveSection(id)
+    if (id === 'overview') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setActiveTab('all')
+      return
+    }
+    const el = document.getElementById(id)
+    if (el) {
+      const yOffset = -76
+      const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset
+      window.scrollTo({ top: y, behavior: 'smooth' })
+    }
+  }, [])
+
+  // Scroll spy to sync active section and quick tabs
+  useEffect(() => {
+    const sectionIds = [
+      'overview',
+      'network-map',
+      'multimodal-center',
+      'scenario-simulator',
+      'anomaly-center',
+      'event-intelligence',
+      'risk-timeline',
+      'alerts',
+      'at-risk-nodes',
+    ]
+
+    const handleScroll = () => {
+      const scrollY = window.scrollY
+      if (scrollY < 200) {
+        setActiveSection('overview')
+        setActiveTab('all')
+        return
+      }
+
+      for (let i = sectionIds.length - 1; i >= 0; i--) {
+        const id = sectionIds[i]
+        const el = document.getElementById(id)
+        if (el) {
+          const top = el.getBoundingClientRect().top
+          if (top <= 120) {
+            setActiveSection(id)
+            if (id === 'network-map') setActiveTab('overview')
+            else if (id === 'multimodal-center') setActiveTab('multimodal')
+            else if (id === 'scenario-simulator') setActiveTab('simulator')
+            else if (id === 'anomaly-center') setActiveTab('anomalies')
+            else if (id === 'event-intelligence') setActiveTab('ai')
+            break
+          }
+        }
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const openRerouteForLane = (fromId: string, toId: string) => {
     setRerouteFromNodeId(fromId)
@@ -104,7 +164,7 @@ export function DashboardShell() {
   )
 
   const openAlerts = () => {
-    document.getElementById('alerts')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    scrollToSection('alerts')
   }
 
   const openRerouteForNode = (nodeId: string) => {
@@ -121,13 +181,13 @@ export function DashboardShell() {
       ...params,
     }))
     setActivePresetId(null)
-    document.getElementById('scenario-simulator')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    scrollToSection('scenario-simulator')
   }
 
   const handleApplyFullSimParams = (params: SimulationParameters) => {
     setSimParams(params)
     setActivePresetId(null)
-    document.getElementById('scenario-simulator')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    scrollToSection('scenario-simulator')
   }
 
   const handleResetSimulation = () => {
@@ -149,6 +209,8 @@ export function DashboardShell() {
         onClose={() => setSidebarOpen(false)}
         unreadAlerts={unreadAlerts}
         onOpenRerouteModal={() => setRerouteModalOpen(true)}
+        activeSection={activeSection}
+        onNavigateSection={scrollToSection}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -161,9 +223,7 @@ export function DashboardShell() {
           onOpenAlerts={openAlerts}
           onOpenRerouteModal={() => setRerouteModalOpen(true)}
           isSimulated={isSimulated}
-          onOpenSimulator={() =>
-            document.getElementById('scenario-simulator')?.scrollIntoView({ behavior: 'smooth' })
-          }
+          onOpenSimulator={() => scrollToSection('scenario-simulator')}
         />
 
         {/* Global Reroute Confirmation Toast Banner */}
@@ -238,10 +298,7 @@ export function DashboardShell() {
             <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-card p-1 text-xs">
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab('all')
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
+                onClick={() => scrollToSection('overview')}
                 className={cn(
                   'rounded-md px-2.5 py-1 font-medium transition-colors',
                   activeTab === 'all'
@@ -253,10 +310,7 @@ export function DashboardShell() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab('overview')
-                  document.getElementById('network-map')?.scrollIntoView({ behavior: 'smooth' })
-                }}
+                onClick={() => scrollToSection('network-map')}
                 className={cn(
                   'rounded-md px-2.5 py-1 font-medium transition-colors',
                   activeTab === 'overview'
@@ -268,10 +322,7 @@ export function DashboardShell() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab('multimodal')
-                  document.getElementById('multimodal-center')?.scrollIntoView({ behavior: 'smooth' })
-                }}
+                onClick={() => scrollToSection('multimodal-center')}
                 className={cn(
                   'rounded-md px-2.5 py-1 font-medium transition-colors',
                   activeTab === 'multimodal'
@@ -283,10 +334,7 @@ export function DashboardShell() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab('simulator')
-                  document.getElementById('scenario-simulator')?.scrollIntoView({ behavior: 'smooth' })
-                }}
+                onClick={() => scrollToSection('scenario-simulator')}
                 className={cn(
                   'rounded-md px-2.5 py-1 font-medium transition-colors',
                   activeTab === 'simulator'
@@ -298,10 +346,7 @@ export function DashboardShell() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab('anomalies')
-                  document.getElementById('anomaly-center')?.scrollIntoView({ behavior: 'smooth' })
-                }}
+                onClick={() => scrollToSection('anomaly-center')}
                 className={cn(
                   'rounded-md px-2.5 py-1 font-medium transition-colors',
                   activeTab === 'anomalies'
@@ -313,10 +358,7 @@ export function DashboardShell() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab('ai')
-                  document.getElementById('event-intelligence')?.scrollIntoView({ behavior: 'smooth' })
-                }}
+                onClick={() => scrollToSection('event-intelligence')}
                 className={cn(
                   'rounded-md px-2.5 py-1 font-medium transition-colors',
                   activeTab === 'ai'
@@ -333,7 +375,7 @@ export function DashboardShell() {
           <KpiGrid nodes={activeNodes} region={region} isSimulated={isSimulated} />
 
           {/* Logistics Map & Live Alerts Grid */}
-          <div id="network-map" className="grid grid-cols-1 gap-4 md:gap-5 xl:grid-cols-12">
+          <div className="grid grid-cols-1 gap-4 md:gap-5 xl:grid-cols-12">
             <div className="min-w-0 xl:col-span-8">
               <MapPanel
                 nodes={activeNodes}

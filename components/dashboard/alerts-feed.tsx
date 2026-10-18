@@ -67,7 +67,7 @@ export function AlertsFeed({
       id="alerts"
       title="Live Alerts"
       description={paused ? 'Feed paused' : 'Streaming simulated disruption signals'}
-      className="h-[520px] xl:h-[520px]"
+      className="h-[480px] xl:h-[540px]"
       actions={
         <>
           <button
