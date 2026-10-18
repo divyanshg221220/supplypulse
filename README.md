@@ -16,9 +16,10 @@ SupplyPulse is a modern, high-performance web platform designed to give operatio
   - Predictive risk timeline tracking regional risk progression.
   - Core performance metrics: Network Health Score, On-Time Delivery Rate, High-Risk Node Counters, and Disruption Impact values.
 
-- 🤖 **Gemini AI Event Intelligence**:
+- 🤖 **Gemini & TinyFish AI Event Intelligence**:
   - Live external event correlation (severe weather, geopolitical shifts, labor strikes, port congestions).
   - AI-driven root-cause assessments, proactive mitigation recommendations, and impact scoring.
+  - Web agent and live data harvesting capability powered by [TinyFish](https://www.tinyfish.ai/) for continuous real-world logistics telemetry and port/carrier updates.
 
 - ⚠️ **Anomaly Detection & Real-Time Alerts**:
   - Categorized alert streams (`weather`, `congestion`, `supplier`, `transit`, `quality`, `geopolitical`).
@@ -36,7 +37,7 @@ SupplyPulse is a modern, high-performance web platform designed to give operatio
 - **Frontend / UI**: [React 19](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS v4](https://tailwindcss.com/), [Shadcn UI](https://ui.shadcn.com/) / Base UI
 - **Mapping & Charts**: [Leaflet](https://leafletjs.com/) & [React-Leaflet](https://react-leaflet.js.org/), [Recharts](https://recharts.org/)
 - **Icons & Styling**: [Lucide React](https://lucide.dev/), `tw-animate-css`, `clsx`, `tailwind-merge`
-- **AI Integration**: Google Gemini API for real-time risk intelligence & scenario analysis
+- **AI & Web Agent Integration**: Google Gemini API & [TinyFish Web Agent API](https://www.tinyfish.ai/) for real-time risk intelligence, live web telemetry & scenario analysis
 - **Package Manager**: [pnpm](https://pnpm.io/)
 
 ---
@@ -68,6 +69,9 @@ Ensure you have the following installed:
    # Google Gemini API Key for AI Event Intelligence
    GEMINI_API_KEY=your_gemini_api_key_here
    NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key_here
+
+   # (Optional) TinyFish API Key for Autonomous Web Agents & Live Data Extraction
+   TINYFISH_API_KEY=your_tinyfish_api_key_here
    ```
 
 4. **Run the development server**:
